@@ -1,168 +1,109 @@
 # MultiAgent
 MultiAgent Systeam
-# 🧠 Smart Document Intelligence System
+# Nexus MediRelay — Multi-Agent Emergency Dispatch & Triage System
 
-An AI-powered multi-agent document analysis platform that intelligently routes documents through specialized pipelines — delivering **clinical-grade medical analysis** and **semantic research retrieval** from a single upload.
-
----
-
-## 🚀 Overview
-
-Most document AI systems treat every file the same. This system doesn't.
-
-A **Classification Agent** acts as the brain — it detects the document type first, then routes it through the optimal pipeline. Medical documents get full-context LLM analysis (zero chunking, zero retrieval loss). Everything else goes through a high-performance RAG pipeline.
+Nexus MediRelay is an intelligent, multi-agent workspace and emergency response system. It features an automated intake dashboard, real-time doctor/ambulance driver queues, manual triage acceptance workflows, and a flexible document ingestion pipeline powered by LangGraph and RAG.
 
 ---
 
-## ⚙️ Architecture
+## 🏗️ System Architecture
+
+The project is structured as a monorepo containing three core components:
 
 ```
-                        USER UPLOAD
-                             │
-                             ▼
-               ┌─────────────────────────┐
-               │   Classification Agent   │
-               └─────────────────────────┘
-                      /             \
-                     /               \
-                    ▼                 ▼
-          MEDICAL PIPELINE        RAG PIPELINE
-                 │                      │
-                 ▼                      ▼
-       Full LLM Context Analysis   Chunk → Embed → Retrieve
-                 │                      │
-                 ▼                      ▼
-      ┌─────────────────┐      ┌─────────────────┐
-      │ Diagnosis Agent  │      │ Research Agent   │
-      │ Triage Agent     │      │ Summarizer Agent │
-      │ Summary Agent    │      └─────────────────┘
-      └─────────────────┘
+├── backend/       # FastAPI + LangGraph + LangChain RAG pipeline
+├── frontend/      # Vite + React + TypeScript + Tailwind (Patient/Workspace UI)
+└── ambulance/     # Vite + React + TypeScript (Dedicated Staff Portal)
 ```
+
+### 1. Backend (`/backend`)
+- **FastAPI**: Serves the REST endpoints for document uploads, real-time chat, and emergency dispatch workflows.
+- **LangGraph**: Orchestrates stateful multi-agent pipelines (routers, medical analysis agents, task planners, and RAG pipelines).
+- **RAG & Search**: Uses LangChain's built-in `InMemoryVectorStore` combined with `HuggingFaceEmbeddings` (`TaylorAI/bge-micro-v2`, ~17MB) for fast, lightweight local semantic matching.
+- **LLM Integrations**: Powered by Groq Cloud (`llama-3.1-8b-instant`) to perform high-speed structured data extraction and logical reasoning.
+
+### 2. Frontend (`/frontend`)
+- **React & TypeScript**: Features a gorgeous glassmorphism workspace UI, dynamic chat interfaces, real-time location capture (GPS intake), and responsive tables.
+- **Zustand (`useEmergencyStore`)**: Powers cross-component and cross-tab state management, paired with broadcast channels for real-time status syncing.
+- **Framer Motion**: Smooth interactive transitions and visual feedback during uploads and routing pipelines.
+
+### 3. Ambulance Staff Portal (`/ambulance`)
+- **Staff-Facing Interface**: Built specifically for Emergency Responders and ER Doctors.
+- **Acceptance Loop**: Pauses the dispatch pipeline at a `PENDING_ACCEPTANCE` state, prompting manual confirmation from a driver/doctor before simulating ambulance routing.
 
 ---
 
-## 🧬 Medical Pipeline
+## ⚡ Key Features
 
-Handles: Blood reports, MRI scans, Prescriptions, Lab reports, Discharge summaries
-
-**Why no RAG for medical?**
-> Medical reports are concise but highly context-sensitive. To avoid retrieval loss and preserve diagnostic integrity, we process the full report directly through the LLM instead of chunk-based retrieval.
-
-**Flow:**
-```
-Upload PDF → OCR/Text Extraction → Full LLM Analysis
-→ Extract Symptoms, Diseases, Abnormal Values, Severity, Risk
-→ Triage Classification → Doctor-Ready Summary
-```
+* 📍 **Live Geolocation Intake**: Captures native browser GPS coordinates and auto-resolves addresses to place the emergency case instantly.
+* 📂 **Context-Aware Doc Uploader**: Drag-and-drop file analyzer displaying real-time upload progress, verification states, and document content thumbnails.
+* 🤖 **Stateful Multi-Agent Workflows**:
+  * **Medical Diagnostic Agent**: Analyzes clinical reports, extracts severity metrics, and matches specialists.
+  * **RAG General Doc Search**: Automatically indexes text chunks and returns LLM-backed answers with citations.
+  * **Startup/Task Planners**: Routes non-medical files to dedicated scoping and scoping simulators.
+* 🚑 **Manual Accept Loop**: Halts auto-dispatching until real-world agents accept a case to ensure triage safety.
 
 ---
 
-## 📚 RAG Pipeline
+## 🚀 Getting Started
 
-Handles: Research papers, Large notes, Policy documents, Articles, Academic PDFs
+### Prerequisites
+- Python 3.10+
+- Node.js 18+
+- A Groq API Key
 
-**Flow:**
-```
-Upload PDF → Chunking → Embeddings → Vector DB
-→ Semantic Retrieval → Research Agent → Summary
-```
+### 1. Backend Setup
+1. Navigate to `/backend`.
+2. Create and activate a Python virtual environment:
+   ```bash
+   python -m venv .venv
+   .venv\Scripts\activate  # Windows
+   source .venv/bin/activate  # macOS/Linux
+   ```
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   pip install langchain-community langchain-huggingface
+   ```
+4. Create a `.env` file in the `/backend` folder:
+   ```env
+   GROQ_API_KEY=your_groq_api_key_here
+   ```
+5. Start the API server:
+   ```bash
+   uvicorn api:app --reload
+   ```
+   *Runs on `http://127.0.0.1:8000`*
 
----
+### 2. Frontend Setup
+1. Navigate to `/frontend`.
+2. Install Node modules:
+   ```bash
+   npm install
+   ```
+3. Start the development server:
+   ```bash
+   npm run dev
+   ```
+   *Runs on `http://localhost:8080` (or `5173` depending on port availability)*
 
-## 🗂️ Project Structure
-
-```
-backend/
-│
-├── agents/
-│   ├── classifier_agent.py      # Document type detection
-│   ├── diagnosis_agent.py       # Medical diagnosis extraction
-│   ├── triage_agent.py          # Severity & urgency classification
-│   ├── summary_agent.py         # Report summarization
-│   ├── research_agent.py        # RAG-based research Q&A
-│   └── orchestrator.py          # Master pipeline controller
-│
-├── pipelines/
-│   ├── medical_pipeline.py      # Full-context medical flow
-│   └── rag_pipeline.py          # Chunk-embed-retrieve flow
-│
-├── rag/
-│   ├── chunker.py
-│   ├── embeddings.py
-│   ├── retriever.py
-│   └── vectorstore.py
-│
-├── medical/
-│   ├── report_parser.py
-│   ├── symptom_extractor.py
-│   ├── abnormality_detector.py
-│   └── medical_prompting.py
-│
-├── uploads/
-└── api/
-```
-
----
-
-## 🤖 Classification Agent
-
-Detects document category using a combination of:
-- Filename analysis
-- Medical keyword matching (`Hemoglobin`, `MRI`, `CBC`, `BP`, `Prescription`, etc.)
-- LLM-based classification fallback
-
-**Supported Categories:**
-| Category | Example Documents |
-|---|---|
-| 🏥 Medical | Blood reports, MRI, Lab results |
-| 🔬 Research | Papers, Journals, Studies |
-| ⚖️ Legal | Contracts, Policies |
-| 💰 Financial | Invoices, Reports |
-| 🎓 Academic | Notes, Textbooks |
-| 📄 General | Any other PDF |
+### 3. Ambulance Portal Setup
+1. Navigate to `/ambulance`.
+2. Install Node modules:
+   ```bash
+   npm install
+   ```
+3. Start the dev server:
+   ```bash
+   npm run dev
+   ```
+   *Runs on a secondary local port (e.g., `http://localhost:8081`)*
 
 ---
 
-## 🛠️ Tech Stack
+## 🛠️ Technology Stack & Dependencies
 
-- **LLM** — Claude / GPT (via API)
-- **OCR** — PyMuPDF / Tesseract
-- **Embeddings** — OpenAI / Sentence Transformers
-- **Vector DB** — FAISS / ChromaDB / Pinecone
-- **Backend** — Python (FastAPI)
-- **Orchestration** — Custom multi-agent framework
-
----
-
-## 📦 Installation
-
-```bash
-git clone https://github.com/your-username/smart-doc-intelligence
-cd smart-doc-intelligence
-pip install -r requirements.txt
-```
-
----
-
-## ▶️ Running the App
-
-```bash
-uvicorn api.main:app --reload
-```
-
----
-
-## 🏆 Key Differentiators
-
-- **Dual-pipeline architecture** — not one-size-fits-all
-- **Medical-safe processing** — no chunking on sensitive reports
-- **Multi-agent orchestration** — specialized agents for each task
-- **Scalable RAG** — handles large documents efficiently
-
----
-
-## 👨‍💻 Author
-
-Built with 🔥 by [Your Name]  
-AI & Data Science Engineer
+- **Backend**: `FastAPI`, `Uvicorn`, `LangGraph`, `LangChain`, `PyMuPDF`, `sentence-transformers`, `torch`
+- **Frontend**: `React 19`, `Vite`, `Tailwind CSS`, `Lucide React`, `Zustand`, `Framer Motion`
+- **Database (Ephem/Local)**: `SQLite3` (Drizzle config initialized in portal)
 
