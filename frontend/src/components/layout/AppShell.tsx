@@ -11,6 +11,7 @@ const nav = [
   { to: "/workspace", label: "Workspace", icon: MessageSquare },
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/documents", label: "Documents", icon: FileText },
+  { to: "/travel", label: "Travel Planner", icon: Hexagon },
 ] as const;
 
 export function AppShell({ children, right }: { children: React.ReactNode; right?: React.ReactNode }) {

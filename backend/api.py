@@ -9,7 +9,9 @@ import uuid
 from extractor import extract_text_from_pdf
 from workflow import app as workflow_app
 from schema import AnalyzeResponse
+from travel_schema import TravelPlanResponse
 from nodes import llm
+from travel_workflow import travel_app
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from typing import List, Dict, Any
 
@@ -137,6 +139,53 @@ async def get_documents():
 @app.get("/analysis/{id}")
 async def get_analysis(id: str):
     raise HTTPException(status_code=404, detail="Analysis not found")
+
+class TripRequest(BaseModel):
+    message: str
+    origin: Optional[str] = None
+
+@app.post("/plan_trip", response_model=TravelPlanResponse)
+async def plan_trip(request: TripRequest):
+    try:
+        initial_state = {
+            "user_request": request.message,
+            "origin": request.origin or "Unknown",
+            "destination": None,
+            "budget": None,
+            "dates": None,
+            "currency": None,
+            "currency_symbol": None,
+            "flights": None,
+            "hotels": None,
+            "taxis": None,
+            "itinerary": None,
+            "budget_report": None,
+            "booking_status": None,
+            "notification_sent": False,
+            "final_response": ""
+        }
+        
+        final_state = travel_app.invoke(initial_state)
+        
+        response = TravelPlanResponse(
+            destination=final_state.get("destination", "Unknown"),
+            budget=final_state.get("budget", 0),
+            origin=final_state.get("origin") or "Unknown",
+            dates=final_state.get("dates", ""),
+            currency=final_state.get("currency") or "USD",
+            currency_symbol=final_state.get("currency_symbol") or "$",
+            flights=final_state.get("flights", []),
+            hotels=final_state.get("hotels", []),
+            taxis=final_state.get("taxis", []),
+            itinerary=final_state.get("itinerary"),
+            budget_report=final_state.get("budget_report"),
+            booking_confirmation=final_state.get("booking_status"),
+            notification_sent=final_state.get("notification_sent", False),
+            message=final_state.get("final_response", "")
+        )
+        return response
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn
