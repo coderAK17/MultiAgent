@@ -1,13 +1,12 @@
 import os
+import uuid
 from typing import Dict, Any
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_groq import ChatGroq
 from langchain_core.output_parsers import StrOutputParser
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-import chromadb
 from dotenv import load_dotenv
 from schema import ClassificationResult, MedicalFinding, RagResult, Citation, TaskResult, StartupSimulation, AutomatedResearch
-from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -52,50 +51,42 @@ def analyze_medical(state: Dict[str, Any]) -> Dict[str, Any]:
 
 def process_general_rag(state: Dict[str, Any]) -> Dict[str, Any]:
     """
-    RAG Pipeline for Non-Medical Document: Chunk + Embed + Retrieve.
-    Then Research + Semantic Search.
+    RAG Pipeline for Non-Medical Document: Chunk + simple retrieval + LLM summarization.
+    Uses pure in-memory approach — no external model downloads required.
     """
     text = state.get("extracted_text", "")
-    symptoms = state.get("user_symptoms", "") # in this context it acts as the query
+    query = state.get("user_symptoms", "") or "Summarize the document."
     
     if not text:
-        return {"final_answer": "No text extracted from document."}
+        return {"rag_result": RagResult(summary="No text extracted from document.")}
         
     # Chunking
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
     docs = text_splitter.create_documents([text])
+    chunks = [doc.page_content for doc in docs]
     
-    # Initialize ephemeral Chroma client
-    client = chromadb.EphemeralClient()
-    collection = client.create_collection(name="general_docs")
+    # Simple keyword-based retrieval (no model downloads needed)
+    query_words = set(query.lower().split())
+    scored = []
+    for chunk in chunks:
+        chunk_words = set(chunk.lower().split())
+        overlap = len(query_words & chunk_words)
+        scored.append((overlap, chunk))
+    scored.sort(key=lambda x: x[0], reverse=True)
+    top_chunks = [c for _, c in scored[:3]] if scored else chunks[:3]
+    context = "\n\n".join(top_chunks)
     
-    # Simple embedding using Chroma's default sentence-transformers
-    collection.add(
-        documents=[doc.page_content for doc in docs],
-        ids=[str(i) for i in range(len(docs))]
-    )
-    
-    # Retrieve
-    query = symptoms if symptoms else "Summarize the document."
-    results = collection.query(
-        query_texts=[query],
-        n_results=min(3, len(docs))
-    )
-    
-    context_chunks = results["documents"][0] if results["documents"] else []
-    context = "\n\n".join(context_chunks)
-    
-    # QA Chain
+    # LLM QA over retrieved context
     prompt = ChatPromptTemplate.from_messages([
-        ("system", "You are a helpful research assistant. Answer the query based on the provided context. If the context is insufficient, say so. Extract key points and provide a summary."),
+        ("system", "You are a helpful research assistant. Answer the query based on the provided context. Extract key points and provide a concise summary."),
         ("human", "Query: {query}\n\nContext:\n{context}")
     ])
     
     chain = prompt | llm.with_structured_output(RagResult)
     rag_result: RagResult = chain.invoke({"query": query, "context": context})
     
-    # Add citations manually based on retrieval
-    rag_result.citations = [Citation(chunk=chunk[:200] + "...", score=score) for chunk, score in zip(context_chunks, results.get("distances", [[None]*len(context_chunks)])[0])]
+    # Add citations from top chunks
+    rag_result.citations = [Citation(chunk=c[:200] + "...") for c in top_chunks]
     
     return {"rag_result": rag_result, "rag_context": context}
 
