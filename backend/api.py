@@ -10,7 +10,8 @@ from extractor import extract_text_from_pdf
 from workflow import app as workflow_app
 from schema import AnalyzeResponse
 from nodes import llm
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
+from typing import List, Dict, Any
 
 app = FastAPI(title="MultiAgent Triage API")
 
@@ -92,11 +93,31 @@ async def upload_document(file: UploadFile = File(...)):
 class ChatRequest(BaseModel):
     message: str
     session_id: Optional[str] = None
+    history: Optional[List[Dict[str, str]]] = None
+    context: Optional[str] = None
 
 @app.post("/chat")
 async def chat(request: ChatRequest):
     try:
-        response = llm.invoke([HumanMessage(content=request.message)])
+        messages = []
+        # Add system message with context if provided
+        system_content = "You are a helpful multi-agent AI assistant."
+        if request.context:
+            system_content += f"\n\nHere is the context of the user's uploaded documents:\n{request.context}"
+        messages.append(SystemMessage(content=system_content))
+        
+        # Add history
+        if request.history:
+            for msg in request.history[-4:]:  # last 4 messages
+                if msg.get("role") == "user":
+                    messages.append(HumanMessage(content=msg.get("content", "")))
+                elif msg.get("role") == "assistant":
+                    messages.append(AIMessage(content=msg.get("content", "")))
+                    
+        # Add current message
+        messages.append(HumanMessage(content=request.message))
+        
+        response = llm.invoke(messages)
         return {"reply": response.content, "agents": ["classifier"]}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

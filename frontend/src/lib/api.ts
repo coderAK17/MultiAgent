@@ -43,8 +43,8 @@ export async function uploadDocument(file: File): Promise<AnalyzeResponse> {
   return data;
 }
 
-export async function chat(message: string, sessionId?: string) {
-  const { data } = await http.post("/chat", { message, session_id: sessionId });
+export async function chat(message: string, history?: any[], context?: string, sessionId?: string) {
+  const { data } = await http.post("/chat", { message, session_id: sessionId, history, context });
   return data as { reply: string; agents?: string[] };
 }
 

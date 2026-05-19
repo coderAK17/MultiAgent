@@ -29,6 +29,6 @@ export const useAppStore = create<AppState>((set) => ({
   pushMessage: (m) => set((s) => ({ messages: [...s.messages, m] })),
   pushActivity: (e) => set((s) => ({ activity: [e, ...s.activity].slice(0, 50) })),
   addDocument: (d) => set((s) => ({ documents: [d, ...s.documents] })),
-  reset: () => set({ messages: [], activity: [], documents: [], agents: AGENTS }),
+  reset: () => set({ messages: [], activity: [], agents: AGENTS }),
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
 }));
