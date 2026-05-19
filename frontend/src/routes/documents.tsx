@@ -16,9 +16,10 @@ export const Route = createFileRoute("/documents")({
   component: DocsPage,
 });
 
-const catIcon = {
+const catIcon: Record<string, any> = {
   medical: Stethoscope, research: BookOpen, legal: Scale,
   academic: GraduationCap, financial: FileQuestion, general: FileText,
+  task: FileText, startup: FileText
 };
 
 function DocsPage() {
@@ -42,10 +43,10 @@ function DocsPage() {
           </div>
           <ul className="space-y-1 p-2">
             {list.map((d) => {
-              const C = catIcon[d.category];
+              const C = catIcon[d.category] || FileText;
               return (
                 <li key={d.id}>
-                  <button onClick={() => setActive(d)} className={cn("flex w-full items-start gap-3 rounded-lg p-3 text-left transition-colors", active.id === d.id ? "bg-secondary" : "hover:bg-secondary/60")}>
+                  <button onClick={() => setActive(d)} className={cn("flex w-full items-start gap-3 rounded-lg p-3 text-left transition-colors", active?.id === d.id ? "bg-secondary" : "hover:bg-secondary/60")}>
                     <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary"><C className="h-4 w-4" /></div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">{d.name}</p>

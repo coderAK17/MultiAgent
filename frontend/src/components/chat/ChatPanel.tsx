@@ -13,6 +13,7 @@ export function ChatPanel() {
   const pushActivity = useAppStore((s) => s.pushActivity);
   const setAgentStatus = useAppStore((s) => s.setAgentStatus);
   const addDocument = useAppStore((s) => s.addDocument);
+  const documents = useAppStore((s) => s.documents);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
@@ -27,14 +28,33 @@ export function ChatPanel() {
       setAgentStatus("classifier", "working", "Analyzing request");
       pushActivity({ id: crypto.randomUUID(), agentId: "classifier", title: "Analyzing request", at: Date.now(), level: "info" });
       
-      const response = await chat(userText);
+      const historyPayload = messages.slice(-4).map(m => ({
+        role: m.role,
+        content: m.content
+      }));
+      
+      const contextDocs = documents.map(d => `Document Name: ${d.name}\nSummary/Preview: ${d.summary ?? d.analysis?.raw_text_preview ?? "No summary available"}\n`).join("\n---\n");
+
+      const response = await chat(userText, historyPayload, contextDocs);
       
       setAgentStatus("classifier", "done", undefined);
+      
+      // Simulate memory agent retrieving context
+      setAgentStatus("memory", "working", "Retrieving conversation context");
+      pushActivity({ id: crypto.randomUUID(), agentId: "memory", title: "Retrieving conversation context", at: Date.now(), level: "info" });
+      await new Promise(r => setTimeout(r, 400));
+      setAgentStatus("memory", "done", undefined);
+      
+      // Simulate summary agent composing reply
+      setAgentStatus("summary", "working", "Composing response");
+      pushActivity({ id: crypto.randomUUID(), agentId: "summary", title: "Composing response", at: Date.now(), level: "success" });
+      await new Promise(r => setTimeout(r, 400));
+      setAgentStatus("summary", "done", undefined);
       
       const reply: ChatMessage = {
         id: crypto.randomUUID(),
         role: "assistant",
-        agentId: response.agents?.[0] as AgentId | undefined,
+        agentId: "summary",
         content: response.reply,
         createdAt: Date.now(),
       };
@@ -56,6 +76,15 @@ export function ChatPanel() {
     if (!file || busy) return;
     
     setBusy(true);
+    
+    // Show user message immediately so they know it's working
+    pushMessage({
+      id: crypto.randomUUID(),
+      role: "user",
+      content: `Uploaded document: **${file.name}**`,
+      createdAt: Date.now(),
+    });
+
     try {
       setAgentStatus("classifier", "working", "Analyzing document");
       pushActivity({ id: crypto.randomUUID(), agentId: "classifier", title: "Analyzing document", at: Date.now(), level: "info" });
@@ -76,20 +105,84 @@ export function ChatPanel() {
       
       setAgentStatus("classifier", "done", undefined);
       
-      pushMessage({
-        id: crypto.randomUUID(),
-        role: "user",
-        content: `Uploaded document: **${file.name}**`,
-        createdAt: Date.now(),
-      });
+      // Simulate the other agents based on the pipeline to populate the activity feed visually
+      const pipeline = response.pipeline;
+      if (pipeline === "medical") {
+        setAgentStatus("diagnosis", "working", "Reasoning over full context");
+        pushActivity({ id: crypto.randomUUID(), agentId: "diagnosis", title: "Reasoning over full context", at: Date.now(), level: "info" });
+        await new Promise(r => setTimeout(r, 600));
+        setAgentStatus("diagnosis", "done", undefined);
+        
+        setAgentStatus("triage", "working", "Computing severity");
+        pushActivity({ id: crypto.randomUUID(), agentId: "triage", title: "Computing severity", at: Date.now(), level: response.medical?.severity === "high" || response.medical?.severity === "critical" ? "critical" : "warning" });
+        await new Promise(r => setTimeout(r, 600));
+        setAgentStatus("triage", "done", undefined);
+      } else if (pipeline === "task") {
+        setAgentStatus("planner", "working", "Planning execution steps");
+        pushActivity({ id: crypto.randomUUID(), agentId: "planner", title: "Planning execution steps", at: Date.now(), level: "info" });
+        await new Promise(r => setTimeout(r, 600));
+        setAgentStatus("planner", "done", undefined);
+        
+        setAgentStatus("executor", "working", "Executing tasks");
+        pushActivity({ id: crypto.randomUUID(), agentId: "executor", title: "Executing tasks", at: Date.now(), level: "info" });
+        await new Promise(r => setTimeout(r, 600));
+        setAgentStatus("executor", "done", undefined);
+        
+        setAgentStatus("reviewer", "working", "Reviewing execution");
+        pushActivity({ id: crypto.randomUUID(), agentId: "reviewer", title: "Reviewing execution", at: Date.now(), level: "success" });
+        await new Promise(r => setTimeout(r, 600));
+        setAgentStatus("reviewer", "done", undefined);
+      } else if (pipeline === "startup") {
+        setAgentStatus("ceo", "working", "Drafting vision");
+        pushActivity({ id: crypto.randomUUID(), agentId: "ceo", title: "Drafting vision", at: Date.now(), level: "info" });
+        await new Promise(r => setTimeout(r, 600));
+        setAgentStatus("ceo", "done", undefined);
+        
+        setAgentStatus("cto", "working", "Designing architecture");
+        pushActivity({ id: crypto.randomUUID(), agentId: "cto", title: "Designing architecture", at: Date.now(), level: "info" });
+        await new Promise(r => setTimeout(r, 600));
+        setAgentStatus("cto", "done", undefined);
+        
+        setAgentStatus("pm", "working", "Scoping requirements");
+        pushActivity({ id: crypto.randomUUID(), agentId: "pm", title: "Scoping requirements", at: Date.now(), level: "success" });
+        await new Promise(r => setTimeout(r, 600));
+        setAgentStatus("pm", "done", undefined);
+      } else if (pipeline === "research") {
+        setAgentStatus("searcher", "working", "Finding sources");
+        pushActivity({ id: crypto.randomUUID(), agentId: "searcher", title: "Finding sources", at: Date.now(), level: "info" });
+        await new Promise(r => setTimeout(r, 600));
+        setAgentStatus("searcher", "done", undefined);
+        
+        setAgentStatus("summarizer", "working", "Synthesizing information");
+        pushActivity({ id: crypto.randomUUID(), agentId: "summarizer", title: "Synthesizing information", at: Date.now(), level: "info" });
+        await new Promise(r => setTimeout(r, 600));
+        setAgentStatus("summarizer", "done", undefined);
+      } else {
+        setAgentStatus("research", "working", "Retrieving context");
+        pushActivity({ id: crypto.randomUUID(), agentId: "research", title: "Retrieving context", at: Date.now(), level: "info" });
+        await new Promise(r => setTimeout(r, 600));
+        setAgentStatus("research", "done", undefined);
+      }
+      
+      setAgentStatus("summary", "working", "Finalizing analysis");
+      pushActivity({ id: crypto.randomUUID(), agentId: "summary", title: "Finalizing analysis", at: Date.now(), level: "success" });
+      await new Promise(r => setTimeout(r, 500));
+      setAgentStatus("summary", "done", undefined);
       
       pushMessage({
         id: crypto.randomUUID(),
         role: "assistant",
-        agentId: "classifier",
-        content: `I've analyzed **${file.name}**.\nIt was classified as **${response.classification.category}**.\n\nSummary:\n${docRecord.summary ?? "Processed successfully."}`,
+        agentId: "summary",
+        content: `I've successfully processed **${file.name}** through the **${response.pipeline}** pipeline.\n\nThe full structured analysis is available in the Documents tab. What would you like to know about it?`,
         createdAt: Date.now(),
       });
+      
+      // If the user typed a prompt while attaching the file, run it automatically
+      if (input.trim()) {
+        const text = input;
+        setInput("");
+        setTimeout(() => runChat(text), 600);
+      }
       
     } catch (error) {
       pushMessage({
@@ -126,7 +219,7 @@ export function ChatPanel() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 py-8">
-        {messages.length === 0 ? <EmptyState /> : (
+        {messages.length === 0 ? <EmptyState onPrompt={(p) => { setInput(p); setTimeout(() => runChat(p), 0); }} /> : (
           <div className="mx-auto max-w-3xl space-y-6">
             <AnimatePresence initial={false}>
               {messages.map((m) => <MessageBubble key={m.id} m={m} />)}
@@ -162,7 +255,7 @@ export function ChatPanel() {
   );
 }
 
-function EmptyState() {
+function EmptyState({ onPrompt }: { onPrompt: (p: string) => void }) {
   const prompts = [
     "Draft a plan for a new marketing campaign",
     "Simulate a CEO and CTO discussing our next feature",
@@ -178,7 +271,7 @@ function EmptyState() {
       <p className="mt-2 text-sm text-muted-foreground">Upload a document or start with one of these prompts.</p>
       <div className="mt-6 grid gap-2 sm:grid-cols-2">
         {prompts.map((p) => (
-          <button key={p} className="glass rounded-xl px-4 py-3 text-left text-sm text-muted-foreground hover:text-foreground transition-colors">
+          <button key={p} onClick={() => onPrompt(p)} className="glass rounded-xl px-4 py-3 text-left text-sm text-muted-foreground hover:text-foreground transition-colors">
             {p}
           </button>
         ))}
