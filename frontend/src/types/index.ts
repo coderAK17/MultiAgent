@@ -53,4 +53,5 @@ export interface DocumentRecord {
   pages?: number;
   status: "processing" | "ready" | "error";
   summary?: string;
+  analysis?: import("@/lib/api").AnalyzeResponse;
 }

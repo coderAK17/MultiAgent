@@ -21,18 +21,9 @@ export const AGENTS: Agent[] = [
   { id: "pm", name: "Product Manager", description: "Startup PM - Scoping", status: "idle" },
 ];
 
-export const MOCK_DOCUMENTS: DocumentRecord[] = [
-  { id: "d1", name: "CBC_Report_2026.pdf", category: "medical", uploadedAt: Date.now() - 1000 * 60 * 12, pages: 4, status: "ready", summary: "Mild anemia. Recommend B12 panel." },
-  { id: "d2", name: "Hypertension_Study.pdf", category: "research", uploadedAt: Date.now() - 1000 * 60 * 60 * 3, pages: 28, status: "ready", summary: "Meta-analysis of ACE inhibitors." },
-  { id: "d3", name: "MRI_Brain.pdf", category: "medical", uploadedAt: Date.now() - 1000 * 60 * 60 * 26, pages: 2, status: "ready" },
-  { id: "d4", name: "Clinical_Trial_NCT.pdf", category: "academic", uploadedAt: Date.now() - 1000 * 60 * 60 * 48, pages: 12, status: "ready" },
-  { id: "d5", name: "Patient_Consent.pdf", category: "legal", uploadedAt: Date.now() - 1000 * 60 * 60 * 72, pages: 3, status: "ready" },
-];
-
 export const NAV = [
   { to: "/", label: "Home" },
   { to: "/workspace", label: "Workspace" },
   { to: "/dashboard", label: "Dashboard" },
   { to: "/documents", label: "Documents" },
-  { to: "/settings", label: "Settings" },
 ] as const;

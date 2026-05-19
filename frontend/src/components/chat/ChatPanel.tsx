@@ -12,9 +12,11 @@ export function ChatPanel() {
   const pushMessage = useAppStore((s) => s.pushMessage);
   const pushActivity = useAppStore((s) => s.pushActivity);
   const setAgentStatus = useAppStore((s) => s.setAgentStatus);
+  const addDocument = useAppStore((s) => s.addDocument);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
@@ -46,6 +48,59 @@ export function ChatPanel() {
       });
     } finally {
       setBusy(false);
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || busy) return;
+    
+    setBusy(true);
+    try {
+      setAgentStatus("classifier", "working", "Analyzing document");
+      pushActivity({ id: crypto.randomUUID(), agentId: "classifier", title: "Analyzing document", at: Date.now(), level: "info" });
+      
+      const { uploadDocument } = await import("@/lib/api");
+      const response = await uploadDocument(file);
+      
+      const docRecord: import("@/types").DocumentRecord = {
+        id: crypto.randomUUID(),
+        name: file.name,
+        category: response.classification.category,
+        uploadedAt: Date.now(),
+        status: "ready",
+        summary: response.medical?.summary ?? response.research?.summary,
+        analysis: response
+      };
+      addDocument(docRecord);
+      
+      setAgentStatus("classifier", "done", undefined);
+      
+      pushMessage({
+        id: crypto.randomUUID(),
+        role: "user",
+        content: `Uploaded document: **${file.name}**`,
+        createdAt: Date.now(),
+      });
+      
+      pushMessage({
+        id: crypto.randomUUID(),
+        role: "assistant",
+        agentId: "classifier",
+        content: `I've analyzed **${file.name}**.\nIt was classified as **${response.classification.category}**.\n\nSummary:\n${docRecord.summary ?? "Processed successfully."}`,
+        createdAt: Date.now(),
+      });
+      
+    } catch (error) {
+      pushMessage({
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: "Sorry, there was an error uploading the document.",
+        createdAt: Date.now()
+      });
+    } finally {
+      setBusy(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -85,7 +140,8 @@ export function ChatPanel() {
       <div className="border-t border-border/60 p-4">
         <div className="mx-auto max-w-3xl">
           <div className="glass-strong flex items-end gap-2 rounded-2xl p-2">
-            <button className="rounded-lg p-2 text-muted-foreground hover:bg-secondary hover:text-foreground"><Paperclip className="h-4 w-4" /></button>
+            <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileUpload} />
+            <button onClick={() => fileInputRef.current?.click()} className="rounded-lg p-2 text-muted-foreground hover:bg-secondary hover:text-foreground"><Paperclip className="h-4 w-4" /></button>
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
