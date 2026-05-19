@@ -6,7 +6,7 @@ export const API_BASE =
 
 export const http = axios.create({
   baseURL: API_BASE,
-  timeout: 60000,
+  timeout: 600000, // 10 minutes to allow for large files and first-time model downloads
 });
 
 export type DocCategory = "medical" | "research" | "legal" | "financial" | "academic" | "general" | "task" | "startup";
